@@ -1,0 +1,22 @@
+# LINE RAG Bot - Streamlit 管理画面
+# Cloud Run 用: PORT=8080 で起動
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app/ ./app/
+COPY streamlit_app.py .
+
+# Cloud Run は PORT 環境変数を設定
+# Streamlit は 0.0.0.0 でリッスンし、ポートを環境変数から取得
+CMD streamlit run streamlit_app.py \
+    --server.port=${PORT} \
+    --server.address=0.0.0.0 \
+    --server.headless=true \
+    --browser.gatherUsageStats=false

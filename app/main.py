@@ -11,8 +11,7 @@ from app.line.dedup import ReplyTokenDeduper
 from app.line.security import verify_line_signature
 from app.llm.gemini import GeminiClient, GeminiModels
 from app.prompting import build_prompt
-from app.rag.chroma_store import ChromaKnowledgeStore
-from app.storage.config_store import ConfigStore
+from app.storage.registry import get_config_store, get_knowledge_store
 
 app = FastAPI()
 
@@ -21,8 +20,8 @@ logger = logging.getLogger("line-rag-bot")
 load_dotenv()
 settings = get_settings()
 
-config_store = ConfigStore(settings.sqlite_path)
-knowledge_store = ChromaKnowledgeStore(settings.chroma_dir)
+config_store = get_config_store(settings)
+knowledge_store = get_knowledge_store(settings)
 
 _gemini: GeminiClient | None = None
 if settings.gemini_api_key:

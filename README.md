@@ -5,9 +5,10 @@ LINEで受けた質問に対して、管理画面で設定した **ロール（S
 ## 構成
 
 - **FastAPI**: `POST /webhook`（LINE Webhook受信→RAG検索→Gemini生成→返信）
-- **ChromaDB**: ナレッジのベクトルDB（ローカル永続）
+- **ストレージ**: SQLite+ChromaDB（ローカル）または **Firestore**（GCP）
+  - ロール: `config` コレクション
+  - ナレッジ: `knowledge` コレクション（埋め込みはアプリ内で類似度検索）
 - **Streamlit**: 管理画面（ロール編集、Q&A登録/削除、再埋め込み）
-- **SQLite**: ロール（BotRole）の保存
 
 ## セットアップ
 
@@ -113,9 +114,38 @@ ngrok http 8000
 - ナレッジが0件、または検索結果が0件のときは、Geminiにユーザー入力をそのまま渡して回答させるフォールバックを有効化できます（デフォルトON）
   - `.env`: `RAG_FALLBACK_TO_LLM=true|false`
 
-## データ保存先（デフォルト）
+## データ保存先
+
+### Firestore（推奨: Cloud Run デプロイ時）
+
+`.env` に `FIRESTORE_PROJECT_ID`（または `GOOGLE_CLOUD_PROJECT`）を設定すると、Firestore を使用します。
+
+- ロール: `config/bot_role` ドキュメント
+- ナレッジ: `knowledge` コレクション
+
+認証: `GOOGLE_APPLICATION_CREDENTIALS` でサービスアカウントJSONを指定、または Cloud Run 上の ADC を使用。
+
+### ローカル（デフォルト）
 
 - Chroma: `./data/chroma`
 - SQLite: `./data/config.sqlite3`
 
 必要なら `.env` で `DATA_DIR` / `CHROMA_DIR` / `SQLITE_PATH` を変更できます。
+
+## Cloud Run デプロイ（案A: 完全無料寄り）
+
+Firestore + Cloud Run で無料枠内デプロイする手順は [DEPLOY.md](DEPLOY.md) を参照してください。
+
+---
+
+## テスト
+
+```bash
+pip install -r requirements.txt
+# 単体テスト（Firestore不要）
+python -m pytest tests/test_cosine_similarity.py -v
+
+# Firestore 統合テスト（エミュレータが必要）
+gcloud emulators firestore start --host-port=localhost:8080
+FIRESTORE_EMULATOR_HOST=localhost:8080 python -m pytest tests/ -v
+```

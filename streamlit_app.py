@@ -6,8 +6,7 @@ import streamlit as st
 
 from app.config import get_settings
 from app.llm.gemini import GeminiClient, GeminiModels
-from app.rag.chroma_store import ChromaKnowledgeStore
-from app.storage.config_store import ConfigStore
+from app.storage.registry import get_config_store, get_knowledge_store
 
 load_dotenv()
 settings = get_settings()
@@ -15,8 +14,8 @@ settings = get_settings()
 st.set_page_config(page_title="LINE RAG Bot Admin", layout="wide")
 st.title("LINE RAG Bot Admin")
 
-cfg = ConfigStore(settings.sqlite_path)
-store = ChromaKnowledgeStore(settings.chroma_dir)
+cfg = get_config_store(settings)
+store = get_knowledge_store(settings)
 
 if not settings.gemini_api_key:
     st.warning("`GEMINI_API_KEY` が未設定です（ナレッジ登録のベクトル化ができません）")

@@ -1,0 +1,39 @@
+# Cloud Build: FastAPI (LINE Webhook) デプロイ
+# テスト成功時のみビルド・デプロイ。環境変数はデプロイ後 deploy.sh または gcloud run services update で設定。
+steps:
+  # Step 0: テスト実行（失敗時は以降のステップをスキップ）
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install -q -r requirements.txt
+        python -m pytest tests/test_cosine_similarity.py -v
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile.api'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/line-rag/api:latest'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/line-rag/api:latest'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'line-rag-api'
+      - '--image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/line-rag/api:latest'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=FIRESTORE_PROJECT_ID=${_PROJECT_ID}'
+substitutions:
+  _PROJECT_ID: ''
+  _REGION: asia-northeast1
+options:
+  logging: CLOUD_LOGGING_ONLY

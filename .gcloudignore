@@ -1,0 +1,14 @@
+# Cloud Build でアップロードする際に除外
+.git
+.gitignore
+.venv
+.env
+.env.*
+*.pyc
+__pycache__
+data/
+*.md
+tests/
+.pytest_cache
+.coverage
+htmlcov/

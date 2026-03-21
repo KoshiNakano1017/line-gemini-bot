@@ -99,6 +99,9 @@ class Settings:
     chroma_dir: str
     sqlite_path: str
 
+    firestore_project_id: str | None
+    firestore_database: str | None
+
     rag_top_k: int
     rag_min_similarity: float
     rag_fallback_to_llm: bool
@@ -113,6 +116,9 @@ def get_settings() -> Settings:
         data_dir, "config.sqlite3"
     )
 
+    firestore_project_id = _env("FIRESTORE_PROJECT_ID") or _env("GOOGLE_CLOUD_PROJECT")
+    firestore_database = _env("FIRESTORE_DATABASE")
+
     return Settings(
         line_channel_secret=_env("LINE_CHANNEL_SECRET"),
         line_channel_access_token=_env("LINE_CHANNEL_ACCESS_TOKEN"),
@@ -124,6 +130,8 @@ def get_settings() -> Settings:
         data_dir=data_dir,
         chroma_dir=chroma_dir,
         sqlite_path=sqlite_path,
+        firestore_project_id=firestore_project_id,
+        firestore_database=firestore_database,
         rag_top_k=_env_int("RAG_TOP_K", 3),
         rag_min_similarity=_env_float("RAG_MIN_SIMILARITY", 0.0),
         rag_fallback_to_llm=_env_bool("RAG_FALLBACK_TO_LLM", True),
