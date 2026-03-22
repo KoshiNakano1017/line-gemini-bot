@@ -136,6 +136,13 @@ ngrok http 8000
 
 Firestore + Cloud Run で無料枠内デプロイする手順は [DEPLOY.md](DEPLOY.md) を参照してください。
 
+### つまづいたところと対応
+
+| 現象 | 原因 | 対応 |
+|------|------|------|
+| Cloud Build / デプロイで 401 UNAUTHENTICATED や権限エラー | GCP の IAM 権限が不足 | クラウドコンソールで Cloud Run、Cloud Build などの必要な権限を追加（[IAM コンソール](https://console.cloud.google.com/iam-admin/iam) でプロジェクトのロールを確認・付与） |
+| `The database (default) does not exist` で Cloud Run 起動失敗 | Firestore が未作成 | `gcloud firestore databases create --project=YOUR_PROJECT_ID --location=asia-northeast1` または [Firestore セットアップ](https://console.cloud.google.com/datastore/setup) からネイティブモードの DB を作成 |
+
 ---
 
 ## テスト

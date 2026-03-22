@@ -137,6 +137,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 | Firestore 接続エラー | 上記 IAM 権限を確認、`FIRESTORE_PROJECT_ID` が正しいか確認 |
 | 502 Bad Gateway | Cloud Run のログを確認、Gemini API キーが設定されているか |
 | LINE Webhook が動かない | Webhook URL が `https://.../webhook` であること、署名検証用に LINE_CHANNEL_SECRET が必須 |
+| **500 Internal Server Error**（Webhook 検証失敗） | Cloud Run に LINE/Gemini の環境変数が未反映の可能性。`./deploy.sh --update-env-only` で環境変数を再反映する |
 
 ---
 

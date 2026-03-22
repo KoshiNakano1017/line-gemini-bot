@@ -48,16 +48,49 @@ echo ""
 # gcloud プロジェクトを設定
 gcloud config set project "$PROJECT_ID"
 
+# オプション: --update-env-only で環境変数の反映のみ実行（ビルドをスキップ）
+if [ "${1:-}" = "--update-env-only" ]; then
+  echo "--- 環境変数を Cloud Run に反映（ビルドはスキップ）---"
+  escape_for_gcloud() {
+    printf '%s' "$1" | sed "s/,/\\\\,/g"
+  }
+  API_ENV_VARS="FIRESTORE_PROJECT_ID=$PROJECT_ID"
+  API_ENV_VARS="$API_ENV_VARS,GEMINI_API_KEY=$(escape_for_gcloud "${GEMINI_API_KEY}")"
+  [ -n "$LINE_CHANNEL_SECRET" ]    && API_ENV_VARS="$API_ENV_VARS,LINE_CHANNEL_SECRET=$(escape_for_gcloud "${LINE_CHANNEL_SECRET}")"
+  [ -n "$LINE_CHANNEL_ACCESS_TOKEN" ] && API_ENV_VARS="$API_ENV_VARS,LINE_CHANNEL_ACCESS_TOKEN=$(escape_for_gcloud "${LINE_CHANNEL_ACCESS_TOKEN}")"
+  gcloud run services update line-rag-api --region="$REGION" --set-env-vars="$API_ENV_VARS"
+  gcloud run services update line-rag-admin --region="$REGION" --set-env-vars="FIRESTORE_PROJECT_ID=$PROJECT_ID,GEMINI_API_KEY=$(escape_for_gcloud "${GEMINI_API_KEY}")" 2>/dev/null || echo "  (line-rag-admin は未デプロイのためスキップ)"
+  echo "環境変数の反映が完了しました。"
+  exit 0
+fi
+
 # オプション: --setup-only で初期設定のみ実行
 if [ "${1:-}" = "--setup-only" ]; then
   echo "--- 初期設定（API有効化・Artifact Registry）---"
   gcloud services enable run.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com cloudbuild.googleapis.com --quiet
   gcloud artifacts repositories create line-rag --repository-format=docker --location="$REGION" 2>/dev/null || echo "  (line-rag リポジトリは既に存在します)"
-  echo "--- Firestore 権限の付与 ---"
+  echo "--- IAM 権限の付与 ---"
   PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+  CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+  COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+  # Firestore（Cloud Run 実行用）
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+    --member="serviceAccount:${COMPUTE_SA}" \
     --role="roles/datastore.user" \
+    --quiet 2>/dev/null || true
+  # Artifact Registry からイメージを pull するため（Cloud Run 実行用）
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${COMPUTE_SA}" \
+    --role="roles/artifactregistry.reader" \
+    --quiet 2>/dev/null || true
+  # Cloud Build → Cloud Run デプロイ用
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${CB_SA}" \
+    --role="roles/run.admin" \
+    --quiet 2>/dev/null || true
+  gcloud iam service-accounts add-iam-policy-binding "$COMPUTE_SA" \
+    --member="serviceAccount:${CB_SA}" \
+    --role="roles/iam.serviceAccountUser" \
     --quiet 2>/dev/null || true
   echo "初期設定完了。デプロイするには ./deploy.sh を実行してください。"
   exit 0
